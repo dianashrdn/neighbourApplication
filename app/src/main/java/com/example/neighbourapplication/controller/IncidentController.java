@@ -263,6 +263,7 @@ public class IncidentController {
             @Override
             public void onErrorResponse(VolleyError error) {
                 localDB.fnInsertIncident(incident, bitmapUri, IncidentDB.tblNameIncidentToUpload);
+                Toast.makeText(context, "No Internet connection detected, adding to local database.", Toast.LENGTH_SHORT).show();
                 progressBar.setVisibility(View.INVISIBLE);
             }
         }) {
@@ -417,6 +418,7 @@ public class IncidentController {
                 }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
+                Toast.makeText(context, "No Internet connection detected..", Toast.LENGTH_SHORT).show();
                 progressBar.setVisibility(View.INVISIBLE);
             }
         }) {

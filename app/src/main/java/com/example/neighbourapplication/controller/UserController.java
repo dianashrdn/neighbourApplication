@@ -1,33 +1,25 @@
 package com.example.neighbourapplication.controller;
 
-import android.app.Activity;
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.media.Image;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.support.annotation.NonNull;
-import android.util.Log;
+import android.support.annotation.Nullable;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import com.android.volley.AuthFailureError;
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
-import com.example.neighbourapplication.IncidentAdapter;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.GlideException;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.target.Target;
 import com.example.neighbourapplication.LoginActivity;
 import com.example.neighbourapplication.ProfileInfoFragment;
 import com.example.neighbourapplication.R;
 import com.example.neighbourapplication.RegisterActivity;
 import com.example.neighbourapplication.UserAdapter;
-import com.example.neighbourapplication.model.Incident;
 import com.example.neighbourapplication.model.User;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -43,11 +35,9 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
-import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Map;
 
 public class UserController {
     private FirebaseFirestore db;
@@ -113,8 +103,21 @@ public class UserController {
                         activity.setUser(user);
                         ImageView imageView = activity.getActivity().findViewById(R.id.profileImage);
                         //masukkan method untuk refresh view etc
-                        if(retrievedUser.getPhoto()!=null)
-                            new DownloadImageTask(bitmap, progressBar).execute(user.getPhoto());
+                        if (retrievedUser.getPhoto() != null) {
+                            Glide.with(context).load(user.getPhoto()).listener(new RequestListener<Drawable>() {
+                                @Override
+                                public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+                                    progressBar.setVisibility(View.INVISIBLE);
+                                    return false;
+                                }
+
+                                @Override
+                                public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+                                    progressBar.setVisibility(View.INVISIBLE);
+                                    return false;
+                                }
+                            }).into(bitmap);
+                        }
                         else{
                             progressBar.setVisibility(View.INVISIBLE);
                             imageView.setImageResource(R.drawable.ic_home_black_24dp);
@@ -166,37 +169,37 @@ public class UserController {
         });
 
     }
-
-    private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
-        ImageView bmImage;
-        ProgressBar progressBar;
-
-        public DownloadImageTask(ImageView bmImage, ProgressBar progressBar) {
-            this.bmImage = bmImage;
-            this.progressBar = progressBar;
-            this.progressBar.setVisibility(View.VISIBLE);
-        }
-
-        protected Bitmap doInBackground(String... urls) {
-            System.out.println("Getting image");
-            String urldisplay = urls[0];
-            Bitmap mIcon11 = null;
-            try {
-                InputStream in = new java.net.URL(urldisplay).openStream();
-                mIcon11 = BitmapFactory.decodeStream(in);
-                mIcon11 = Bitmap.createScaledBitmap(mIcon11, 150, 150, true);
-            } catch (Exception e) {
-                Log.e("Error", e.getMessage());
-                e.printStackTrace();
-            }
-            System.out.println("Image retrieved");
-            return mIcon11;
-        }
-        protected void onPostExecute(Bitmap result) {
-            bmImage.setImageBitmap(result);
-            progressBar.setVisibility(View.INVISIBLE);
-        }
-    }
+//
+//    private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
+//        ImageView bmImage;
+//        ProgressBar progressBar;
+//
+//        public DownloadImageTask(ImageView bmImage, ProgressBar progressBar) {
+//            this.bmImage = bmImage;
+//            this.progressBar = progressBar;
+//            this.progressBar.setVisibility(View.VISIBLE);
+//        }
+//
+//        protected Bitmap doInBackground(String... urls) {
+//            System.out.println("Getting image");
+//            String urldisplay = urls[0];
+//            Bitmap mIcon11 = null;
+//            try {
+//                InputStream in = new java.net.URL(urldisplay).openStream();
+//                mIcon11 = BitmapFactory.decodeStream(in);
+//                mIcon11 = Bitmap.createScaledBitmap(mIcon11, 150, 150, true);
+//            } catch (Exception e) {
+//                Log.e("Error", e.getMessage());
+//                e.printStackTrace();
+//            }
+//            System.out.println("Image retrieved");
+//            return mIcon11;
+//        }
+//        protected void onPostExecute(Bitmap result) {
+//            bmImage.setImageBitmap(result);
+//            progressBar.setVisibility(View.INVISIBLE);
+//        }
+//    }
 
     public void insertUser(final User user, final RegisterActivity activity){
 

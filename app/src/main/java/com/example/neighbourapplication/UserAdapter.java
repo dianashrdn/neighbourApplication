@@ -1,11 +1,9 @@
 package com.example.neighbourapplication;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.os.AsyncTask;
+import android.graphics.drawable.Drawable;
+import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,10 +11,14 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.GlideException;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.target.Target;
 import com.example.neighbourapplication.controller.UserController;
 import com.example.neighbourapplication.model.User;
 
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -44,7 +46,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.ViewHolder> {
 
     @SuppressWarnings("deprecation")
     @Override
-    public void onBindViewHolder(UserAdapter.ViewHolder holder, int position) {
+    public void onBindViewHolder(final UserAdapter.ViewHolder holder, int position) {
         final User user = users.get(position);
         UserController userController = new UserController(context);
         holder.progressBar.setVisibility(View.VISIBLE);
@@ -52,12 +54,23 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.ViewHolder> {
         holder.email.setText(user.getEmail());
         holder.address.setText(user.getAddress());
         holder.phoneNumber.setText(user.getPhoneNumber());
-        //holder.photo.set
-        //TODO
-        //Kena tukar adapter
-        //FireStore only stores image url, get image url, then download and display
-        if(user.getPhoto()!=null)
-            new UserAdapter.DownloadImageTask(holder.photo, holder.progressBar).execute(user.getPhoto());
+
+        if (user.getPhoto() != null) {
+            Glide.with(context).load(user.getPhoto()).listener(new RequestListener<Drawable>() {
+                @Override
+                public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+                    holder.progressBar.setVisibility(View.INVISIBLE);
+                    return false;
+                }
+
+                @Override
+                public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+                    holder.progressBar.setVisibility(View.INVISIBLE);
+                    return false;
+                }
+            }).into(holder.photo);
+        }
+//            new UserAdapter.DownloadImageTask(holder.photo, holder.progressBar).execute(user.getPhoto());
         else{
             System.out.println("No picture");
             holder.progressBar.setVisibility(View.INVISIBLE);
@@ -89,35 +102,35 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.ViewHolder> {
     }
 
     //download Image
-    private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
-        ImageView bmImage;
-        ProgressBar progressBar;
-
-        public DownloadImageTask(ImageView bmImage, ProgressBar progressBar) {
-            this.bmImage = bmImage;
-            this.progressBar = progressBar;
-        }
-
-        protected Bitmap doInBackground(String... urls) {
-            System.out.println("Getting image");
-            String urldisplay = urls[0];
-            Bitmap mIcon11 = null;
-            try {
-                InputStream in = new java.net.URL(urldisplay).openStream();
-                mIcon11 = BitmapFactory.decodeStream(in);
-                mIcon11 = Bitmap.createScaledBitmap(mIcon11,150, 150, true);
-            } catch (Exception e) {
-                Log.e("Error", e.getMessage());
-                e.printStackTrace();
-            }
-            System.out.println("Image retrieved");
-            return mIcon11;
-        }
-
-        protected void onPostExecute(Bitmap result) {
-            bmImage.setImageBitmap(result);
-            progressBar.setVisibility(View.GONE);
-        }
-    }
+//    private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
+//        ImageView bmImage;
+//        ProgressBar progressBar;
+//
+//        public DownloadImageTask(ImageView bmImage, ProgressBar progressBar) {
+//            this.bmImage = bmImage;
+//            this.progressBar = progressBar;
+//        }
+//
+//        protected Bitmap doInBackground(String... urls) {
+//            System.out.println("Getting image");
+//            String urldisplay = urls[0];
+//            Bitmap mIcon11 = null;
+//            try {
+//                InputStream in = new java.net.URL(urldisplay).openStream();
+//                mIcon11 = BitmapFactory.decodeStream(in);
+//                mIcon11 = Bitmap.createScaledBitmap(mIcon11,150, 150, true);
+//            } catch (Exception e) {
+//                Log.e("Error", e.getMessage());
+//                e.printStackTrace();
+//            }
+//            System.out.println("Image retrieved");
+//            return mIcon11;
+//        }
+//
+//        protected void onPostExecute(Bitmap result) {
+//            bmImage.setImageBitmap(result);
+//            progressBar.setVisibility(View.GONE);
+//        }
+//    }
 }
 
