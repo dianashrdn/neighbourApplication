@@ -11,10 +11,11 @@ import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.design.widget.NavigationView;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
-import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
@@ -28,8 +29,11 @@ import com.example.neighbourapplication.controller.IncidentController;
 import com.example.neighbourapplication.controller.WatchProgrammeController;
 import com.example.neighbourapplication.model.Incident;
 import com.example.neighbourapplication.model.WatchProgramme;
+import com.example.neighbourapplication.sqlite.IncidentDB;
 import com.google.firebase.firestore.GeoPoint;
 import com.google.firebase.messaging.FirebaseMessaging;
+
+import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, WatchProgrammeDialog.watchProgrammeDialogListener, AddIncidentDialog.AddIncidentDialogListener, LocationListener {
@@ -44,6 +48,7 @@ public class MainActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+
         sharedPreferences = getSharedPreferences("NeighbourApp", MODE_PRIVATE);
         username = sharedPreferences.getString("username", null);
         if(username==null){
@@ -57,25 +62,10 @@ public class MainActivity extends AppCompatActivity
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1337);
         }
 
-
-        try{
-            locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
-            Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            if(location!=null)
-                currentLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
-            else{
-                location=locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-                if(location!=null)
-                    currentLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
-                else
-                    currentLocation = new GeoPoint(101,100);
-            }
-
-
-        }catch (SecurityException e){
-            e.printStackTrace();
-        }
+        if (!(PackageManager.PERMISSION_GRANTED == checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE))) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 5);
+        } else
+            uploadPending();
 
 
 
@@ -135,6 +125,24 @@ public class MainActivity extends AppCompatActivity
 
             AddIncidentDialog addIncidentDialog = new AddIncidentDialog();
             addIncidentDialog.show(getSupportFragmentManager(),"Add Incident");
+            try {
+                locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
+                Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                if (location != null)
+                    currentLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
+                else {
+                    location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                    if (location != null)
+                        currentLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
+                    else
+                        currentLocation = new GeoPoint(101, 100);
+                }
+
+
+            } catch (SecurityException e) {
+                e.printStackTrace();
+            }
               return true;
         }
         else if (id== R.id.addActvity){
@@ -237,11 +245,11 @@ public class MainActivity extends AppCompatActivity
         incident.setLocation(currentLocation);
         incident.setDescription(note);
         incidentController.insertIncident(incident, imageUri, this);
+        locationManager.removeUpdates(this);
     }
 
     @Override
     public void onLocationChanged(Location location) {
-        System.out.println("Test: "+location);
         currentLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
     }
 
@@ -280,5 +288,16 @@ public class MainActivity extends AppCompatActivity
         watchProgrammeController.insertWatchProgramme(watchProgramme, this);
 
 
+    }
+
+    public void uploadPending() {
+        IncidentDB incidentDB = new IncidentDB(this);
+        HashMap<String, Incident> incidents = new HashMap<>();
+        incidentDB.fnGetIncidents(IncidentDB.tblNameIncidentToUpload, incidents);
+        if (incidents.size() != 0) {
+            Toast.makeText(this, "Detected pending incident report, uploading now...", Toast.LENGTH_SHORT).show();
+            IncidentController incidentController = new IncidentController(this);
+            incidentController.insertIncident(incidents, this);
+        }
     }
 }

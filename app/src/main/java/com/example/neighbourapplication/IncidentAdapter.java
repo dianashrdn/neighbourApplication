@@ -3,8 +3,10 @@ package com.example.neighbourapplication;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.v4.app.FragmentActivity;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -16,6 +18,11 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.GlideException;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.target.Target;
 import com.example.neighbourapplication.controller.IncidentController;
 import com.example.neighbourapplication.model.Incident;
 
@@ -47,12 +54,10 @@ public class IncidentAdapter extends RecyclerView.Adapter<IncidentAdapter.ViewHo
 
     @SuppressWarnings("deprecation")
     @Override
-    public void onBindViewHolder(ViewHolder holder, int position) {
+    public void onBindViewHolder(final ViewHolder holder, int position) {
         final Incident incident = incidents.get(position);
         IncidentController incidentController = new IncidentController(context);
         holder.progressBar.setVisibility(View.VISIBLE);
-        System.out.println("From adapter: "+incident.getIncidentId());
-        System.out.println("From adapter: "+incident.getIncidentName());
         holder.description.setText(incident.getDescription());
         holder.incidentName.setText(incident.getIncidentName());
         //holder.photo.set
@@ -70,7 +75,22 @@ public class IncidentAdapter extends RecyclerView.Adapter<IncidentAdapter.ViewHo
             }
         });
         //FireStore only stores image url, get image url, then download and display
-        new DownloadImageTask(holder.photo, holder.progressBar).execute(incident.getPhoto());
+        holder.photo.setImageDrawable(null);
+        holder.progressBar.setVisibility(View.VISIBLE);
+        Glide.with(context).load(incident.getPhoto()).listener(new RequestListener<Drawable>() {
+            @Override
+            public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+                holder.progressBar.setVisibility(View.INVISIBLE);
+                return false;
+            }
+
+            @Override
+            public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+                holder.progressBar.setVisibility(View.INVISIBLE);
+                return false;
+            }
+        }).into(holder.photo);
+//        new DownloadImageTask(holder.photo, holder.progressBar).execute(incident.getPhoto());
 
     }
 
@@ -106,7 +126,6 @@ public class IncidentAdapter extends RecyclerView.Adapter<IncidentAdapter.ViewHo
         }
 
         protected Bitmap doInBackground(String... urls) {
-            System.out.println("Getting image");
             String urldisplay = urls[0];
             Bitmap mIcon11 = null;
             try {

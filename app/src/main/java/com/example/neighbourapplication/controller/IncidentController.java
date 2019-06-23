@@ -23,34 +23,30 @@ import com.android.volley.toolbox.Volley;
 import com.example.neighbourapplication.IncidentAdapter;
 import com.example.neighbourapplication.R;
 import com.example.neighbourapplication.model.Incident;
+import com.example.neighbourapplication.sqlite.IncidentDB;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
-import com.google.firebase.messaging.FirebaseMessaging;
-import com.google.firebase.messaging.RemoteMessage;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
 public class IncidentController {
+
     private FirebaseFirestore db;
     private Context context;
     private Incident incident;
@@ -61,13 +57,16 @@ public class IncidentController {
     }
 
     public void setIncident(final Incident incident){
-
         this.incident = incident;
     }
+
 
     //get data
     public void getIncidents(final IncidentAdapter incidentAdapter){
         final HashMap<String, Incident> incidents = new HashMap<>();
+//        IncidentDB localDB = new IncidentDB(context);
+//        localDB.fnGetIncidents(IncidentDB.tblNameIncident, incidents);
+//        localDB.fnGetIncidents(IncidentDB.tblNameIncidentToUpload, incidents);
         final FirebaseFirestore db = FirebaseFirestore.getInstance();
         Thread getIncidentThread = new Thread(){
             @Override
@@ -94,64 +93,21 @@ public class IncidentController {
         getIncidentThread.run();
     }
 
-    //
-    public void getIncidents(){
-        final HashMap<String, Incident> incidents = new HashMap<>();
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-
-        db.collection("incidents")
-                .get()
-                .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
-                    @Override
-                    public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
-                        for( QueryDocumentSnapshot documentSnapshot : queryDocumentSnapshots) {
-                            Incident incident = documentSnapshot.toObject(Incident.class);
-                            incident.setIncidentId(documentSnapshot.getId());
-                            incidents.put(incident.getIncidentId(),incident);
-                        }
-                        ArrayList<Incident> incidentsArr = new ArrayList<>(incidents.values());
-                        Toast.makeText(context, incidentsArr.get(0).getIncidentId(), Toast.LENGTH_SHORT).show();
-                    }
-                });
-    }
-
-    //get incident
-    public void getIncident(String id, final ImageView bitmap, final Incident incident){
-        final HashMap<String, Incident> incidents = new HashMap<>();
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-
-        db.collection("incidents").document(id)
-                .get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                if(task.isSuccessful()){
-                    DocumentSnapshot documentSnapshot = task.getResult();
-                    if(documentSnapshot.exists()){
-                        Incident retrievedIncident = documentSnapshot.toObject(Incident.class);
-                        incident.setPhoto(retrievedIncident.getPhoto());
-                        incident.setIncidentId(documentSnapshot.getId());
-                        incident.setIncidentName(retrievedIncident.getIncidentName());
-                        incident.setDescription(retrievedIncident.getDescription());
-                        incident.setDate(retrievedIncident.getDate());
-                        incident.setTime(retrievedIncident.getTime());
-
-                        System.out.println(retrievedIncident.getIncidentName());
-                        System.out.println(retrievedIncident.getPhoto());
-                        //masukkan method untuk refresh view etc
-                        new DownloadImageTask(bitmap).execute(incident.getPhoto());
-                    }
-                }
-            }
-        });
-
-    }
-
     //get map location
     public void getIncidentsLocation(final GoogleMap googleMap){
         final HashMap<String, Marker> markers = new HashMap<>();
+//        final HashMap<String, Incident> incidents = new HashMap<>();
         FirebaseFirestore db = FirebaseFirestore.getInstance();
+//        IncidentDB localDB = new IncidentDB(context);
+//        localDB.fnGetIncidents(IncidentDB.tblNameIncident, incidents);
+//        localDB.fnGetIncidents(IncidentDB.tblNameIncidentToUpload, incidents);
 
-
+//        for (Incident incident : incidents.values()){
+//            Marker marker = googleMap.addMarker(getPlaceMarker(incident));
+//            marker.setTag(incident.getIncidentId());
+//            marker.setIcon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
+//            markers.put(incident.getIncidentId(), marker);
+//        }
 
         db.collection("incidents")
                 .get()
@@ -170,24 +126,247 @@ public class IncidentController {
         });
     }
 
-    public void insertIncident(final Incident incident, Uri bitmapUri, Activity activity){
+    public void insertIncident(final Incident incident, final Uri bitmapUri, Activity activity) {
         storageReference = FirebaseStorage.getInstance().getReference();
 
-        Date date = new Date();
-        SimpleDateFormat formatter = new SimpleDateFormat("MM-dd-yyyy hh.mm.ss");
-
-        storageReference = storageReference.child("images/"+formatter.format(date));
+        final Date date = new Date();
+        final SimpleDateFormat formatter = new SimpleDateFormat("MM-dd-yyyy hh.mm.ss");
         final ProgressBar progressBar = activity.findViewById(R.id.progressUpload);
         progressBar.setVisibility(View.VISIBLE);
-        if(bitmapUri!=null)
-            storageReference.putFile(bitmapUri)
-                    .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                        @Override
-                        public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                            storageReference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-                                @Override
-                                public void onSuccess(Uri uri) {
-                                    incident.setPhoto(uri.toString());
+        final IncidentDB localDB = new IncidentDB(context);
+
+
+        RequestQueue queue = Volley.newRequestQueue(context);
+
+        String url = "https://aesuneus.000webhostapp.com/neighbourservice.php";
+
+        StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        if (response.matches("SUCCESS")) {
+                            storageReference = storageReference.child("images/" + formatter.format(date));
+                            if (bitmapUri != null)
+                                storageReference.putFile(bitmapUri)
+                                        .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                                            @Override
+                                            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                                                storageReference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                                                    @Override
+                                                    public void onSuccess(Uri uri) {
+                                                        incident.setPhoto(uri.toString());
+                                                        db.collection("incidents")
+                                                                .add(incident)
+                                                                .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                                                                    @Override
+                                                                    public void onSuccess(DocumentReference documentReference) {
+                                                                        progressBar.setVisibility(View.INVISIBLE);
+                                                                        Toast.makeText(context, "Incident reported successfully", Toast.LENGTH_SHORT).show();
+
+                                                                        RequestQueue queue = Volley.newRequestQueue(context);
+                                                                        String url = "https://aesuneus.000webhostapp.com/neighbourservice.php";
+
+                                                                        StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
+                                                                                new Response.Listener<String>() {
+                                                                                    @Override
+                                                                                    public void onResponse(String response) {
+                                                                                        System.out.println("Notified");
+                                                                                    }
+                                                                                }, new Response.ErrorListener() {
+                                                                            @Override
+                                                                            public void onErrorResponse(VolleyError error) {
+                                                                                System.out.println("Error notification");
+                                                                            }
+                                                                        }) {
+                                                                            @Override
+                                                                            protected Map<String, String> getParams() throws AuthFailureError {
+                                                                                Map<String, String> params = new HashMap<String, String>();
+                                                                                params.put("message", incident.getIncidentName());
+                                                                                return params;
+                                                                            }
+                                                                        };
+
+                                                                        queue.add(stringRequest);
+
+
+                                                                    }
+                                                                })
+                                                                .addOnFailureListener(new OnFailureListener() {
+                                                                    @Override
+                                                                    public void onFailure(@NonNull Exception e) {
+                                                                        progressBar.setVisibility(View.INVISIBLE);
+                                                                        Toast.makeText(context, "Failed to add report..", Toast.LENGTH_SHORT).show();
+                                                                    }
+                                                                });
+                                                    }
+                                                });
+                                            }
+                                        })
+                                        .addOnFailureListener(new OnFailureListener() {
+                                            @Override
+                                            public void onFailure(@NonNull Exception exception) {
+                                                // Handle unsuccessful uploads
+                                                // ...
+                                            }
+                                        });
+                            else
+                                db.collection("incidents")
+                                        .add(incident)
+                                        .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                                            @Override
+                                            public void onSuccess(DocumentReference documentReference) {
+                                                localDB.fnDeleteIncident(incident.getIncidentId(), IncidentDB.tblNameIncidentToUpload);
+                                                progressBar.setVisibility(View.INVISIBLE);
+                                                Toast.makeText(context, "Incident reported successfully", Toast.LENGTH_SHORT).show();
+
+                                                RequestQueue queue = Volley.newRequestQueue(context);
+                                                String url = "https://aesuneus.000webhostapp.com/neighbourservice.php";
+
+                                                StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
+                                                        new Response.Listener<String>() {
+                                                            @Override
+                                                            public void onResponse(String response) {
+                                                                System.out.println("Notified");
+                                                            }
+                                                        }, new Response.ErrorListener() {
+                                                    @Override
+                                                    public void onErrorResponse(VolleyError error) {
+                                                        System.out.println("Error notification");
+                                                    }
+                                                }) {
+                                                    @Override
+                                                    protected Map<String, String> getParams() throws AuthFailureError {
+                                                        Map<String, String> params = new HashMap<String, String>();
+                                                        params.put("message", incident.getIncidentName());
+                                                        return params;
+                                                    }
+                                                };
+
+                                                queue.add(stringRequest);
+                                            }
+                                        })
+                                        .addOnFailureListener(new OnFailureListener() {
+                                            @Override
+                                            public void onFailure(@NonNull Exception e) {
+                                                progressBar.setVisibility(View.INVISIBLE);
+                                                Toast.makeText(context, "Failed to add report..", Toast.LENGTH_SHORT).show();
+                                            }
+                                        });
+
+                        } else {
+                            localDB.fnInsertIncident(incident, bitmapUri, IncidentDB.tblNameIncidentToUpload);
+                            Toast.makeText(context, "No Internet connection detected, adding to local database.", Toast.LENGTH_SHORT).show();
+                            progressBar.setVisibility(View.INVISIBLE);
+                        }
+                    }
+                }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                localDB.fnInsertIncident(incident, bitmapUri, IncidentDB.tblNameIncidentToUpload);
+                progressBar.setVisibility(View.INVISIBLE);
+            }
+        }) {
+            @Override
+            protected Map<String, String> getParams() throws AuthFailureError {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("testConnection", "");
+                return params;
+            }
+        };
+
+        queue.add(stringRequest);
+
+
+    }
+
+    public void insertIncident(final HashMap<String, Incident> incidents, Activity activity) {
+        storageReference = FirebaseStorage.getInstance().getReference();
+
+        final Date date = new Date();
+        final SimpleDateFormat formatter = new SimpleDateFormat("MM-dd-yyyy hh.mm.ss");
+        final ProgressBar progressBar = activity.findViewById(R.id.progressUpload);
+        progressBar.setVisibility(View.VISIBLE);
+        final IncidentDB localDB = new IncidentDB(context);
+
+        RequestQueue queue = Volley.newRequestQueue(context);
+        String url = "https://aesuneus.000webhostapp.com/neighbourservice.php";
+
+        StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        if (response.matches("SUCCESS")) {
+                            for (final Incident incident : incidents.values()) {
+                                Uri bitmapUri = null;
+                                if (incident.getPhoto() != null)
+                                    bitmapUri = Uri.parse(incident.getPhoto());
+
+
+                                storageReference = storageReference.child("images/" + formatter.format(date));
+
+                                if (bitmapUri != null)
+                                    storageReference.putFile(bitmapUri)
+                                            .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                                                @Override
+                                                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                                                    storageReference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                                                        @Override
+                                                        public void onSuccess(Uri uri) {
+                                                            incident.setPhoto(uri.toString());
+                                                            db.collection("incidents")
+                                                                    .add(incident)
+                                                                    .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                                                                        @Override
+                                                                        public void onSuccess(DocumentReference documentReference) {
+                                                                            localDB.fnDeleteIncident(incident.getIncidentId(), IncidentDB.tblNameIncidentToUpload);
+
+                                                                            Toast.makeText(context, "Incident reported successfully", Toast.LENGTH_SHORT).show();
+                                                                            RequestQueue queue = Volley.newRequestQueue(context);
+                                                                            String url = "https://aesuneus.000webhostapp.com/neighbourservice.php";
+
+                                                                            StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
+                                                                                    new Response.Listener<String>() {
+                                                                                        @Override
+                                                                                        public void onResponse(String response) {
+                                                                                            System.out.println("Notified");
+                                                                                        }
+                                                                                    }, new Response.ErrorListener() {
+                                                                                @Override
+                                                                                public void onErrorResponse(VolleyError error) {
+                                                                                    System.out.println("Error notification");
+                                                                                }
+                                                                            }) {
+                                                                                @Override
+                                                                                protected Map<String, String> getParams() throws AuthFailureError {
+                                                                                    Map<String, String> params = new HashMap<String, String>();
+                                                                                    params.put("message", IncidentController.this.incident.getIncidentName());
+                                                                                    return params;
+                                                                                }
+                                                                            };
+
+                                                                            queue.add(stringRequest);
+
+
+                                                                        }
+                                                                    })
+                                                                    .addOnFailureListener(new OnFailureListener() {
+                                                                        @Override
+                                                                        public void onFailure(@NonNull Exception e) {
+                                                                            Toast.makeText(context, "Failed to add report..", Toast.LENGTH_SHORT).show();
+                                                                        }
+                                                                    });
+                                                        }
+                                                    });
+                                                }
+                                            })
+                                            .addOnFailureListener(new OnFailureListener() {
+                                                @Override
+                                                public void onFailure(@NonNull Exception exception) {
+                                                    // Handle unsuccessful uploads
+                                                    // ...
+                                                }
+                                            });
+                                else
                                     db.collection("incidents")
                                             .add(incident)
                                             .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
@@ -197,7 +376,7 @@ public class IncidentController {
                                                     Toast.makeText(context, "Incident reported successfully", Toast.LENGTH_SHORT).show();
 
                                                     RequestQueue queue = Volley.newRequestQueue(context);
-                                                    String url ="https://aesuneus.000webhostapp.com/neighbourservice.php";
+                                                    String url = "https://aesuneus.000webhostapp.com/neighbourservice.php";
 
                                                     StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
                                                             new Response.Listener<String>() {
@@ -210,19 +389,16 @@ public class IncidentController {
                                                         public void onErrorResponse(VolleyError error) {
                                                             System.out.println("Error notification");
                                                         }
-                                                    }){
+                                                    }) {
                                                         @Override
                                                         protected Map<String, String> getParams() throws AuthFailureError {
-                                                            Map<String ,String> params = new HashMap<String,String>();
-                                                            params.put("message",incident.getIncidentName());
+                                                            Map<String, String> params = new HashMap<String, String>();
+                                                            params.put("message", incident.getIncidentName());
                                                             return params;
                                                         }
                                                     };
 
                                                     queue.add(stringRequest);
-
-
-
                                                 }
                                             })
                                             .addOnFailureListener(new OnFailureListener() {
@@ -232,61 +408,29 @@ public class IncidentController {
                                                     Toast.makeText(context, "Failed to add report..", Toast.LENGTH_SHORT).show();
                                                 }
                                             });
-                                }
-                            });
-                        }
-                    })
-                    .addOnFailureListener(new OnFailureListener() {
-                        @Override
-                        public void onFailure(@NonNull Exception exception) {
-                            // Handle unsuccessful uploads
-                            // ...
-                        }
-                });
-        else
-            db.collection("incidents")
-                    .add(incident)
-                    .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
-                        @Override
-                        public void onSuccess(DocumentReference documentReference) {
+                            }
                             progressBar.setVisibility(View.INVISIBLE);
-                            Toast.makeText(context, "Incident reported successfully", Toast.LENGTH_SHORT).show();
-
-                            RequestQueue queue = Volley.newRequestQueue(context);
-                            String url ="https://aesuneus.000webhostapp.com/neighbourservice.php";
-
-                            StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
-                                    new Response.Listener<String>() {
-                                        @Override
-                                        public void onResponse(String response) {
-                                            System.out.println("Notified");
-                                        }
-                                    }, new Response.ErrorListener() {
-                                @Override
-                                public void onErrorResponse(VolleyError error) {
-                                    System.out.println("Error notification");
-                                }
-                            }){
-                                @Override
-                                protected Map<String, String> getParams() throws AuthFailureError {
-                                    Map<String ,String> params = new HashMap<String,String>();
-                                    params.put("message",incident.getIncidentName());
-                                    return params;
-                                }
-                            };
-
-                            queue.add(stringRequest);
-                        }
-                    })
-                    .addOnFailureListener(new OnFailureListener() {
-                        @Override
-                        public void onFailure(@NonNull Exception e) {
+                        } else {
                             progressBar.setVisibility(View.INVISIBLE);
-                            Toast.makeText(context, "Failed to add report..", Toast.LENGTH_SHORT).show();
                         }
-                    });
+                    }
+                }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                progressBar.setVisibility(View.INVISIBLE);
+            }
+        }) {
+            @Override
+            protected Map<String, String> getParams() throws AuthFailureError {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("testConnection", "");
+                return params;
+            }
+        };
+        queue.add(stringRequest);
 
     }
+
 
     /*public static void getPlace(String placeId, final PlaceInfoFragment placeInfoFragment) {
 
