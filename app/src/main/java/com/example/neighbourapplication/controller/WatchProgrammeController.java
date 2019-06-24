@@ -91,7 +91,6 @@ public class WatchProgrammeController {
         };
         getWatchProgrammeThread.run();
     }
-
     //
     public void getWatchProgrammes(){
         final HashMap<String, WatchProgramme> watchProgrammes = new HashMap<>();
