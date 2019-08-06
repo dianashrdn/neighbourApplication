@@ -65,11 +65,15 @@ public class LoginActivity extends AppCompatActivity {
         Intent intent = new Intent();
         if(user!=null){
             if(user.getPassword().equals(loginPassword.getText().toString())){
+if(user.getVerified()==1){
                 intent.putExtra("email", user.getEmail());
                 intent.putExtra("username", user.getUsername());
                 setResult(RESULT_OK, intent);
                 Toast.makeText(this, "login", Toast.LENGTH_SHORT).show();
                 finish();
+}
+else
+Toast.makeText(this, "User not verified", Toast.LENGTH_SHORT).show();
             }
             else
                 Toast.makeText(this, "Wrong password", Toast.LENGTH_SHORT).show();
